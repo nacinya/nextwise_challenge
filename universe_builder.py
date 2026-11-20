@@ -74,7 +74,7 @@ def instrument_key(item):
 def read_catalog_file(file, source="Imported catalogue (verify NextWise availability)"):
     """Read a CSV/XLSX with user-supplied stock and ETF candidates."""
     data = io.BytesIO(file.getvalue())
-    raw = pd.read_csv(data, sep=None, engine="python") if file.name.lower().endswith(".csv") else pd.read_excel(data)
+    raw = pd.read_csv(data, sep=None, engine="python", encoding="utf-8-sig") if file.name.lower().endswith(".csv") else pd.read_excel(data)
     aliases = {
         "name": "Name", "asset name": "Name", "instrument": "Name",
         "instrument name": "Name", "nom": "Name", "libellé": "Name",
@@ -89,12 +89,12 @@ def read_catalog_file(file, source="Imported catalogue (verify NextWise availabi
     }
     rename = {}
     for col in raw.columns:
-        normalized = str(col).strip().casefold()
+        normalized = str(col).lstrip("\ufeff").strip().casefold()
         if normalized in aliases:
             rename[col] = aliases[normalized]
     raw = raw.rename(columns=rename)
     if "Name" not in raw.columns or "Type" not in raw.columns:
-        raise ValueError("Your file needs at least Name (or Asset Name) and Type (Stock / ETF).")
+        raise ValueError("The CSV needs Name (or Asset Name) and Type (Stock / ETF). Columns found: " + ", ".join(map(str, raw.columns)))
     df = pd.DataFrame(index=raw.index)
     for field in COLUMNS[:-1]:
         df[field] = raw[field].fillna("").astype(str).str.strip() if field in raw.columns else ""
