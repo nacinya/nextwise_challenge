@@ -157,7 +157,7 @@ with overview:
         sector_table["% of total portfolio"] = sector_table["Market Value"] / total
         st.dataframe(sector_table, use_container_width=True, hide_index=True, column_config={
             "Market Value": st.column_config.NumberColumn("Direct stock exposure (€)", format="€%.2f"),
-            "% of total portfolio": st.column_config.NumberColumn("Portfolio weight", format="%.2f%%"),
+            "% of total portfolio": st.column_config.NumberColumn("Portfolio weight", format="percent"),
         })
     else:
         st.info("Provide 'Asset Type' = Stock and a 'Sector' column to view direct stock exposure.")
