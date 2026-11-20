@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import streamlit as st
+from bl_comparison import read_model_export, build_comparison
 
 st.set_page_config(page_title="NextWise Portfolio Lab", page_icon="📈", layout="wide")
 
@@ -140,7 +141,7 @@ m6.metric("Effective positions", f"{effective_positions:.2f}")
 m7.metric("Top 5 concentration", f"{top5:.2%}")
 m8.metric("Top 10 concentration", f"{top10:.2%}")
 
-overview, holdings_tab, methodology = st.tabs(["Allocation overview", "Holdings", "Methodology & next steps"])
+overview, holdings_tab, comparison_tab, methodology = st.tabs(["Allocation overview", "Holdings", "Black–Litterman comparison", "Methodology & next steps"])
 with overview:
     st.subheader("Position weights — share of total portfolio")
     plot_data = positions.sort_values("Portfolio Weight", ascending=True)
@@ -173,6 +174,62 @@ with holdings_tab:
     download = holdings.to_csv(index=False).encode("utf-8")
     st.download_button("Download normalized portfolio CSV", download, file_name="nextwise_portfolio_normalized.csv", mime="text/csv")
 
+
+with comparison_tab:
+    st.subheader("Current portfolio vs Black–Litterman × HRP")
+    st.caption("Uses the exact **Poids BL-HRP (%)** weights exported by your supplied Black–Litterman × HRP model. The app does not refit or silently change that model.")
+    bl_csv = st.file_uploader("Upload bl_hrp_allocation.csv from the model app", type=["csv"], key="bl_csv")
+    with st.expander("Where do I find the Black–Litterman weights?"):
+        st.markdown(
+            "Open your Black–Litterman × HRP application. Run the model using the "
+            "chosen assumptions and data date, then go to **⚙️ Paramètres → "
+            "📋 Allocation Complète (Export) → 📥 Télécharger CSV**. "
+            "Upload that CSV here alongside your current holdings. "
+            "The source model uses an equal-weight benchmark and a "
+            "broader asset universe; that is **not** your actual NextWise portfolio."
+        )
+    if bl_csv is None:
+        st.info("Upload the model's original CSV export to calculate the comparison. No target weights have been invented.")
+    else:
+        try:
+            bl_weights = read_model_export(bl_csv)
+            comparison, bl_stats = build_comparison(holdings, bl_weights)
+        except Exception as exc:
+            st.error(f"Unable to compare: {exc}")
+        else:
+            k1, k2, k3, k4 = st.columns(4)
+            k1.metric("Model assets", str(bl_stats["model_assets"]))
+            k2.metric("Matched assets", str(bl_stats["matched_assets"]))
+            k3.metric("Current portfolio covered", f"{bl_stats['matched_current_weight']:.1%}")
+            k4.metric("Model position HHI", f"{bl_stats['target_hhi']:.5f}")
+            st.warning(
+                "The uploaded BL-HRP allocation and the current portfolio may use "
+                "different securities, model dates and investment universes. "
+                "Missing positions are NOT automatic buy/sell instructions. "
+                "NextWise eligibility and original model assumptions must be checked."
+            )
+            st.caption(
+                f"Unmatched current positions: {bl_stats['unmatched_current']} • "
+                f"Unmatched model instruments: {bl_stats['unmatched_model']}. "
+                "Base-ticker matches must be manually verified when exchanges differ."
+            )
+            st.subheader("Weight comparison")
+            comparison_view = comparison.sort_values("Difference", key=abs, ascending=False).copy()
+            st.dataframe(
+                comparison_view, hide_index=True, use_container_width=True,
+                column_config={
+                    "Current weight": st.column_config.NumberColumn(format="percent"),
+                    "BL-HRP target weight": st.column_config.NumberColumn(format="percent"),
+                    "Difference": st.column_config.NumberColumn(format="percent"),
+                }
+            )
+            st.download_button(
+                "Download comparison CSV",
+                comparison.to_csv(index=False).encode("utf-8"),
+                file_name="nextwise_vs_bl_hrp_comparison.csv", mime="text/csv",
+            )
+            st.caption("The model HHI is across its exported full universe; the current HHI above is for invested holdings. Compare only with matching definitions.")
+
 with methodology:
     st.markdown(
         """
@@ -185,7 +242,7 @@ with methodology:
         - **Top 5/10:** largest invested positions divided by **total portfolio value** (including cash).
         - **Sector view:** direct holdings only; **not an official NextWise ICB look-through result**.
 
-        **Planned next:** verified ICB sector look-through for ETFs, historical price-based risk
+        **Black–Litterman comparison:** import the CSV from the supplied hybrid BL-HRP model; only weights and matching are compared until model dates and eligible universe are aligned.\n\n        **Planned next:** verified ICB sector look-through for ETFs, historical price-based risk
         measures, eligible investment universe upload, Black–Litterman integration and
         scenario comparisons. No live trading or brokerage connection is included.
         """
