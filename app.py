@@ -312,7 +312,7 @@ with sectors_tab:
         st.error(f"Sector calculation couldn't be completed: {exc}")
         sectors_now, sector_meta = pd.DataFrame(), None
     if sector_meta is not None:
-        a, b, c = st.columns(3)
+        a, b, c, d = st.columns(4)
         a.metric("ICB sectors represented", str(sector_meta["n_sectors"]))
         b.metric("Direct stock coverage", display_pct(
             sector_meta["classified_direct"] / sector_meta["total_direct"] if sector_meta["total_direct"] else None
@@ -320,6 +320,8 @@ with sectors_tab:
         c.metric("ETF look-through coverage", display_pct(
             sector_meta["classified_etf"] / sector_meta["total_etf"] if sector_meta["total_etf"] else None
         ))
+        d.metric("Portfolio classified", display_pct(sector_meta["classified_pct"]))
+        st.caption("Cash and inverse ETP exposures are excluded from ICB-sector attribution; broad or missing sector labels are unclassified.")
         if not sectors_now.empty:
             st.dataframe(
                 sectors_now, hide_index=True, use_container_width=True,
