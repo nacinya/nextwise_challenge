@@ -1,15 +1,18 @@
 """Minimal smoke tests for both Streamlit navigation stages."""
 from streamlit.testing.v1 import AppTest
+from pathlib import Path
+
+APP_FILE = Path(__file__).resolve().parents[1] / "app.py"
 
 
 def test_universe_home_renders_without_importing_portfolio():
-    at = AppTest.from_file("app.py", default_timeout=30).run()
+    at = AppTest.from_file(APP_FILE, default_timeout=30).run()
     assert len(at.exception) == 0, [x.message for x in at.exception]
     assert any("Your investment universe" in x.value for x in at.title)
 
 
 def test_analysis_manual_mode_renders():
-    at = AppTest.from_file("app.py", default_timeout=30)
+    at = AppTest.from_file(APP_FILE, default_timeout=30)
     at.session_state["nw_page"] = "analysis"
     at.session_state["nextwise_selected_universe"] = {
         "Stock:AAA:companya": {
