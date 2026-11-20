@@ -21,7 +21,7 @@ from portfolio_engine import (
 from bl_comparison import read_model_export, build_comparison
 
 st.set_page_config(
-    page_title="NextWise | Portfolio Lab", page_icon="◯",
+    page_title="NextWise | Portfolio Lab", page_icon="📈",
     layout="wide", initial_sidebar_state="collapsed",
 )
 
@@ -407,6 +407,7 @@ with risk_tab:
     st.markdown("#### Actual NextWise gross performance")
     st.info("Not available from a single holdings snapshot. We need dated portfolio NAV / cash-flow records to calculate actual competition performance reliably.")
 
+proposed = portfolio.copy()
 with scenario_tab:
     st.subheader("Test purchases, sales and removals")
     st.caption(
@@ -495,25 +496,29 @@ with bl_tab:
         try:
             bl_weights = read_model_export(bl_file)
             result, info = build_comparison(portfolio.loc[portfolio["Market Value"].gt(0)], bl_weights)
+            after_bl, after_info = build_comparison(proposed.loc[proposed["Market Value"].gt(0)], bl_weights)
         except Exception as exc:
             st.error(f"Black–Litterman comparison unavailable: {exc}")
         else:
-            a, b, c = st.columns(3)
+            a, b, c, d = st.columns(4)
             a.metric("Matching model assets", str(info["matched_assets"]))
             b.metric("Current portfolio matched", display_pct(info["matched_current_weight"]))
-            c.metric("BL–HRP target HHI", display_number(info["target_hhi"], 5))
+            c.metric("Scenario portfolio matched", display_pct(after_info["matched_current_weight"]))
+            d.metric("BL–HRP target HHI", display_number(info["target_hhi"], 5))
             st.warning(
                 "The model has a separate investment universe and model date. "
                 "Model-only assets are not automatically eligible for NextWise, "
                 "and its equal-weight benchmark is not your actual portfolio."
             )
-            st.dataframe(result, hide_index=True, use_container_width=True, column_config={
+            view = st.radio("Compare Black–Litterman against", ["Current portfolio", "Proposed scenario"], horizontal=True)
+            display_comparison = result if view == "Current portfolio" else after_bl
+            st.dataframe(display_comparison, hide_index=True, use_container_width=True, column_config={
                 "Current weight": st.column_config.NumberColumn(format="percent"),
                 "BL-HRP target weight": st.column_config.NumberColumn(format="percent"),
                 "Difference": st.column_config.NumberColumn(format="percent"),
             })
             st.download_button(
-                "Download BL–HRP comparison (CSV)", result.to_csv(index=False).encode("utf-8-sig"),
+                "Download BL–HRP comparison (CSV)", display_comparison.to_csv(index=False).encode("utf-8-sig"),
                 file_name="nextwise_bl_hrp_comparison.csv", mime="text/csv",
             )
     else:
