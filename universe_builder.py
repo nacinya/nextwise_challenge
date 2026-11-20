@@ -122,15 +122,13 @@ def add_row(row):
 
 
 def render_universe_builder():
-    st.markdown("## Build your investment universe")
-    st.write(
-        "Search for stocks and ETFs you want to analyse. Assemble a universe to feed into "
-        "the portfolio analytics and Black–Litterman comparison."
+    st.caption(
+        "Select stocks and ETFs, then continue to portfolio analysis. "
+        "Search the imported catalogue or the historical holdings examples."
     )
-    st.info(
-        "**Availability:** This is NOT a live NextWise search. Start with previously held "
-        "instruments, upload a list from NextWise, or add instruments you've personally "
-        "confirmed are available there. The app cannot independently verify tradeability."
+    st.caption(
+        "Not connected to a live NextWise instrument directory. "
+        "Confirm tradeability on the NextWise platform before placing any order."
     )
 
     if "nextwise_selected_universe" not in st.session_state:
