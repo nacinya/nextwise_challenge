@@ -1,42 +1,59 @@
-# NextWise Portfolio Analytics
+# NextWise Portfolio Lab
 
-Streamlit app for analysing dated NextWise portfolio snapshots, and comparing current weights with the **Black–Litterman × HRP** allocation exported by the team's existing model.
+A minimalist, white Streamlit app for building a NextWise-eligible **investment universe**, analysing a dated portfolio and comparing cash-funded trade scenarios against the current portfolio and the team's existing Black–Litterman × HRP allocations.
 
-## Deploy
+## Deployment
 
-- Repository: `nacinya/nextwise_challenge`
-- Branch: `main`
-- Main file: `app.py`
-- Dependencies: `requirements.txt`
+- Repo: \`nacinya/nextwise_challenge\`
+- Branch: \`main\`
+- Main file: \`app.py\`
+- Theme: \`.streamlit/config.toml\`
+- Site: Streamlit Community Cloud
 
-Deploy in [Streamlit Community Cloud](https://share.streamlit.io/). If you have the deployment form open already, refresh the page after the files were added.
+Existing portfolio optimisation notebooks have been preserved.
 
-## Homepage: build an investment universe
+## Page 1 — Investment universe
 
-The first tab is **Home · Build universe**, with a **Stocks / ETFs dropdown**, name/ticker/ISIN search, and a selected-universe list.
+1. Use the **Stocks / ETFs** dropdown and ticker, name or ISIN search.
+2. Search historical holdings (labelled as examples, not proof of current eligibility), upload an available-instruments CSV, or manually add an asset verified on NextWise.
+3. Add your selected instruments to the universe and **Download investment universe** to save it.
+4. Restore the exported CSV in a later session; the parser supports UTF-8 BOM as used by the app's own exports.
+5. Click **Continue to analysis →** when at least one instrument has been selected.
 
-- Start with 25 **historically held** stock/ETF examples (17 November 2026), explicitly labelled as not proof of current NextWise eligibility.
-- Upload a CSV or Excel instrument catalogue exported from NextWise or compiled by your team. It needs a `Name` and `Type` (Stock/ETF), and ideally `Ticker`, `ISIN` and `Exchange`.
-- Search or filter the catalogue and add chosen stocks/ETFs to the universe.
-- Manually add an instrument only after confirming its availability in NextWise.
-- Export your selected universe as CSV and restore it next time. Universe selection persists only for the current Streamlit browser session; there is no cloud database yet.
+Universe inputs aren't persisted to a shared database yet. Download the CSV before closing your browser session.
 
-This is **not** a live NextWise instrument search and does not certify that an instrument is currently eligible. The exported universe will be the input to future scenario and BL-HRP comparison tools.
+## Page 2 — Portfolio analysis
 
-## Use the app
+**1. Current portfolio inputs:** Upload a dated holdings snapshot (.csv/.xlsx), or manually enter EUR market values for instruments in the selected universe and the cash balance. The selected universe is a candidate pool, not proof of what the account holds.
 
-1. Export a dated portfolio CSV or Excel file from your NextWise holdings. Recommended columns are `Asset Name`, `Ticker`, `Asset Type`, `Sector` and `Market Value`. Cash should be a row with name or type `Cash`. Optionally supply `Quantity` and `Market Price` instead of market value.
-2. Upload it in the Streamlit sidebar. The initial portfolio is a **fictional demonstration**, not the real NextWise account.
-3. The allocation overview reports portfolio weights, position-level HHI, effective positions, and top-five/ten concentration. Sector analysis currently covers **direct stocks only**.
-4. For the Black–Litterman comparison, run the supplied **Black–Litterman × HRP** model using the chosen model parameters and dates, open its **Paramètres → Allocation Complète (Export)** section and download `bl_hrp_allocation.csv`.
-5. Upload that CSV to the **Black–Litterman comparison** tab. The upload parser reads the original `Ticker`, `Position`, and `Poids BL-HRP (%)` fields and compares the exported model target weights to the actual portfolio snapshot.
+**2. Overview:** Total portfolio value, cash, number of lines, position-level HHI including/excluding cash, effective number of positions, top-five/top-ten concentration, weight chart, holdings table.
 
-## Important limitations
+**3. Sector allocation:** ICB sector labels for direct stocks. Optionally upload a separate ETF **ICB sector look-through** file with columns \`Ticker,ICB Sector,Weight\`; weights may be 0–1 fractions or 0–100 percentages. Incomplete coverage is flagged. A GICS broad sector breakdown must not be inserted as though it were ICB.
 
-- The **source Black–Litterman × HRP model is not recomputed here**. For reproducibility, this dashboard uses its exported model weights rather than substituting a new model or new market data.
-- The source model's universe is broader than the historical NextWise holdings. The app flags unmatched assets and does not assume any model instrument is eligible for trading in NextWise.
-- The source model's **"Équipondéré (Avant)"** means an equal-weight reference benchmark — it is **not** the team's actual historical portfolio.
-- Position-level HHI treats ETFs as one instrument; full ICB look-through and official NextWise rule checks are pending.
-- Do not upload private account credentials or sensitive portfolio files to a public application.
+**4. Risk and performance:** Optionally upload EUR-denominated historical daily adjusted closing prices, with a \`Date\` column and a column per invested asset ticker. With adequate overlapping observations, the app estimates volatility, Sharpe, diversification ratio, correlations, constant-weight historical max drawdown and risk contributions. These aren't the competition's official 180-week ex-ante metric or realized returns of a changing portfolio.
 
-The original NextWise portfolio optimisation notebook in this repository is preserved.
+**5. Scenario lab:** Enter signed amounts (\`Trade (€)\`): positive to buy, negative to sell. Can include unowned selected-universe assets. Buys use available cash or proceeds from sales. Scenarios conserve portfolio value and recalculate concentration, sector allocation and indicative UCITS 5/10/40; historical risk metrics are recalculated only if all required price histories are supplied. Download the proposed portfolio CSV.
+
+**6. Black–Litterman:** Run the team's **original** BL × HRP application using its existing assumptions. In **Paramètres → Allocation Complète (Export)** download \`bl_hrp_allocation.csv\`, then upload it to this app. Compare both the *current* and the *proposed* scenario weights against the original \`Poids BL-HRP (%)\` output. Instruments in the model but not in NextWise are not deemed automatically eligible.
+
+## Limitations and verification
+
+- This application doesn't connect to a live NextWise trading catalogue or automatically place orders.
+- Scenario changes are hypothetical; no transaction costs, market impact or execution slippage are modelled.
+- Position-level HHI is not NextWise's full look-through HHI for ETFs.
+- UCITS 5/10/40 is an **indicative position-level screen**, not an official or legal compliance determination.
+- Actual gross competition performance requires an account NAV/cash-flow history, not a single snapshot.
+- The input price matrix must use a consistent currency and appropriate adjusted prices for a meaningful comparison.
+- Uploaded universe / portfolio / model files are session inputs. Do not upload confidential credentials or protected client data.
+- For the current competition's rules see [NextWise](https://www.nextwise.fr/en/le-reglement).
+
+## Quality checks
+
+GitHub Actions runs \`python -m py_compile\` on the Python modules and regression tests covering scenario cash reconciliation, HHI, sector look-through, CSV restoration and historical price calculations.
+
+## Local development
+
+\`\`\`bash
+pip install -r requirements.txt
+streamlit run app.py
+\`\`\`
