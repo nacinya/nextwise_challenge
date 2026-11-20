@@ -8,6 +8,7 @@ import pandas as pd
 import plotly.express as px
 import streamlit as st
 from bl_comparison import read_model_export, build_comparison
+from universe_builder import render_universe_builder
 
 st.set_page_config(page_title="NextWise Portfolio Lab", page_icon="📈", layout="wide")
 
@@ -94,7 +95,7 @@ def normalize_portfolio(raw):
 
 
 st.title("📈 NextWise Portfolio Lab")
-st.caption("Portfolio analytics prototype • Upload a dated snapshot and recalculate concentration metrics")
+st.caption("Build an investment universe • Analyse your portfolio • Compare Black–Litterman allocations")
 st.sidebar.header("Input data")
 portfolio_file = st.sidebar.file_uploader("Portfolio snapshot (CSV or XLSX)", type=["csv", "xlsx"])
 snapshot_date = st.sidebar.date_input("Portfolio snapshot date")
@@ -106,11 +107,6 @@ try:
 except Exception as exc:
     st.error(f"Cannot read portfolio: {exc}")
     st.stop()
-
-if portfolio_file is None:
-    st.warning("Showing a FICTIONAL DEMO portfolio. Upload your own snapshot for real NextWise results.")
-else:
-    st.success(f"Loaded {len(holdings)} rows from {portfolio_file.name}.")
 
 cash_mask = holdings["Asset Name"].str.casefold().eq("cash") | holdings["Asset Type"].str.casefold().eq("cash")
 cash = float(holdings.loc[cash_mask, "Market Value"].sum())
@@ -129,20 +125,29 @@ effective_positions = 1.0 / hhi_invested
 top5 = float(positions["Market Value"].nlargest(5).sum() / total)
 top10 = float(positions["Market Value"].nlargest(10).sum() / total)
 
-st.caption(f"Analysis date: {snapshot_date:%d %B %Y} • Snapshot values are static until you upload a new file.")
-m1, m2, m3, m4 = st.columns(4)
-m1.metric("Portfolio value", f"€{total:,.2f}")
-m2.metric("Invested positions", f"{len(positions)}")
-m3.metric("Cash", f"€{cash:,.2f}", f"{cash / total:.2%} of portfolio", delta_color="off")
-m4.metric("HHI (excluding cash)", f"{hhi_invested:.5f}")
-m5, m6, m7, m8 = st.columns(4)
-m5.metric("HHI (including cash)", f"{hhi_with_cash:.5f}")
-m6.metric("Effective positions", f"{effective_positions:.2f}")
-m7.metric("Top 5 concentration", f"{top5:.2%}")
-m8.metric("Top 10 concentration", f"{top10:.2%}")
 
-overview, holdings_tab, comparison_tab, methodology = st.tabs(["Allocation overview", "Holdings", "Black–Litterman comparison", "Methodology & next steps"])
+
+home, overview, holdings_tab, comparison_tab, methodology = st.tabs(["🏠 Home · Build universe", "📊 Portfolio analysis", "Holdings", "Black–Litterman comparison", "Methodology & next steps"])
+with home:
+    render_universe_builder()
+
 with overview:
+    if portfolio_file is None:
+        st.warning("Showing a FICTIONAL DEMO portfolio. Upload your own snapshot for real NextWise results.")
+    else:
+        st.success(f"Loaded {len(holdings)} rows from {portfolio_file.name}.")
+    st.caption(f"Analysis date: {snapshot_date:%d %B %Y} • Snapshot values are static until you upload a new file.")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Portfolio value", f"€{total:,.2f}")
+    m2.metric("Invested positions", f"{len(positions)}")
+    m3.metric("Cash", f"€{cash:,.2f}", f"{cash / total:.2%} of portfolio", delta_color="off")
+    m4.metric("HHI (excluding cash)", f"{hhi_invested:.5f}")
+    m5, m6, m7, m8 = st.columns(4)
+    m5.metric("HHI (including cash)", f"{hhi_with_cash:.5f}")
+    m6.metric("Effective positions", f"{effective_positions:.2f}")
+    m7.metric("Top 5 concentration", f"{top5:.2%}")
+    m8.metric("Top 10 concentration", f"{top10:.2%}")
+
     st.subheader("Position weights — share of total portfolio")
     plot_data = positions.sort_values("Portfolio Weight", ascending=True)
     fig = px.bar(plot_data, x="Portfolio Weight", y="Asset Name", orientation="h", labels={"Portfolio Weight": "Portfolio weight", "Asset Name": ""})
@@ -233,7 +238,7 @@ with comparison_tab:
 with methodology:
     st.markdown(
         """
-        **V1 calculates:** portfolio weights, concentration (HHI), effective number of positions,
+        **Universe builder:** select from historically held example assets or import a NextWise-provided catalogue, filter by Stock/ETF, add confirmed instruments, and export a CSV. There is no live NextWise eligibility lookup.\n\n        **V1 calculates:** portfolio weights, concentration (HHI), effective number of positions,
         top 5 and top 10 weights, and a preliminary **direct-stock-only** sector view.
 
         - **Invested-only HHI:** sum of squared weights after excluding cash.
